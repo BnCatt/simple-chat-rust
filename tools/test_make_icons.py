@@ -10,7 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'tools' / 'make_icons.py'
 NAMES = {'microphone', 'microphone_off', 'speaker', 'speaker_off', 'whisper', 'disconnected', 'group',
-         'settings', 'lock'}
+         'settings', 'lock', 'volumes', 'eye', 'eye_off', 'leave', 'group_hud', 'group_hud_off', 'check',
+         'search'}
 
 
 def run(out: Path, rust: Path):
@@ -45,7 +46,7 @@ class MakeIcons(unittest.TestCase):
             committed = ROOT / 'assets' / 'voicechat' / 'textures' / 'gui' / 'icons'
             for p in Path(d).glob('*.png'):
                 self.assertEqual(p.read_bytes(), (committed / p.name).read_bytes(), p.name)
-            rust = ROOT / 'mixins' / 'voicechat' / 'engine' / 'src' / 'icons.rs'
+            rust = ROOT / 'mixins' / 'simple_chat_rust' / 'engine' / 'src' / 'icons.rs'
             self.assertEqual((Path(d) / 'icons.rs').read_bytes(), rust.read_bytes())
 
 
