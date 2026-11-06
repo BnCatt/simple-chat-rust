@@ -4,7 +4,7 @@
     python tools/make_icons.py [--out DIR] [--rust FILE]
 
 Writes `assets/voicechat/textures/gui/icons/<name>.png` (16x16 RGBA) and
-`mixins/voicechat/engine/src/icons.rs`, the same pixels compiled into the mod so it
+`mixins/simple_chat_rust/engine/src/icons.rs`, the same pixels compiled into the mod so it
 draws its icons even where the game has no content mod textures. Plain Python (zlib),
 no dates in the files: the same grids always give the same bytes.
 """
@@ -23,6 +23,7 @@ PALETTE = {
     'R': 0xFFE04040,  # red
     'B': 0xFF60D0FF,  # whisper blue
     'Y': 0xFFE8B830,  # gold
+    'L': 0xFF50C850,  # green
 }
 
 MIC = [
@@ -174,6 +175,120 @@ LOCK = [
     '................',
 ]
 
+VOLUMES = [
+    '................',
+    '....KKK.........',
+    '.KKKKWKKKKKKKKK.',
+    '.KDDKWKDDDDDDDK.',
+    '.KKKKWKKKKKKKKK.',
+    '....KKK.........',
+    '..........KKK...',
+    '.KKKKKKKKKKWKKK.',
+    '.KDDDDDDDDKWKDK.',
+    '.KKKKKKKKKKWKKK.',
+    '..........KKK...',
+    '.......KKK......',
+    '.KKKKKKKWKKKKKK.',
+    '.KDDDDDKWKDDDDK.',
+    '.KKKKKKKWKKKKKK.',
+    '.......KKK......',
+]
+
+EYE = [
+    '................',
+    '................',
+    '................',
+    '.....KKKKKK.....',
+    '...KKWWWWWWKK...',
+    '..KWWWKKKKWWWK..',
+    '.KWWWKDDDDKWWWK.',
+    'KWWWWKDKKDKWWWWK',
+    'KWWWWKDKKDKWWWWK',
+    '.KWWWKDDDDKWWWK.',
+    '..KWWWKKKKWWWK..',
+    '...KKWWWWWWKK...',
+    '.....KKKKKK.....',
+    '................',
+    '................',
+    '................',
+]
+
+LEAVE = [
+    '................',
+    '.KKKKKKKK.......',
+    '.KGGGGGGK.......',
+    '.KGDDDDGK.......',
+    '.KGD....K..K....',
+    '.KGD.......KK...',
+    '.KGD..KKKKKKRK..',
+    '.KGD..KRRRRRRRK.',
+    '.KGD..KRRRRRRRK.',
+    '.KGD..KKKKKKRK..',
+    '.KGD.......KK...',
+    '.KGD....K..K....',
+    '.KGDDDDGK.......',
+    '.KGGGGGGK.......',
+    '.KKKKKKKK.......',
+    '................',
+]
+
+HUD = [
+    '................',
+    'KKKKKKKKKKKKKKKK',
+    'KDDDDDDDDDDDDDDK',
+    'KDWWDWWWWDDDDDDK',
+    'KDDDDDDDDDDDDDDK',
+    'KDWWDWWWDDDDDDDK',
+    'KDDDDDDDDDDDDDDK',
+    'KDWWDWWWWWDDDDDK',
+    'KDDDDDDDDDDDDDDK',
+    'KDDDDDDDDDDDDDDK',
+    'KDDDDDDDDDDDDDDK',
+    'KDDDDDDDDDDDDDDK',
+    'KKKKKKKKKKKKKKKK',
+    '......KKKK......',
+    '....KKKKKKKK....',
+    '................',
+]
+
+CHECK = [
+    '................',
+    '................',
+    '.............KK.',
+    '............KLLK',
+    '...........KLLK.',
+    '..........KLLK..',
+    '.KK......KLLK...',
+    'KLLK....KLLK....',
+    '.KLLK..KLLK.....',
+    '..KLLKKLLK......',
+    '...KLLLLK.......',
+    '....KLLK........',
+    '.....KK.........',
+    '................',
+    '................',
+    '................',
+]
+
+SEARCH = [
+    '................',
+    '...KKKKK........',
+    '..KGGGGGK.......',
+    '.KGWWGGGGK......',
+    '.KGWGGGGGK......',
+    '.KGGGGGGGK......',
+    '.KGGGGGGGK......',
+    '.KGGGGGGGK......',
+    '..KGGGGGK.......',
+    '...KKKKKKK......',
+    '.........KKK....',
+    '..........KDK...',
+    '...........KDK..',
+    '............KDK.',
+    '.............KK.',
+    '................',
+]
+
 
 def over(*layers):
     """Layers drawn over each other: a later layer's pixels win, '.' lets through."""
@@ -211,6 +326,14 @@ ICONS = [
     ('group', 'Group', GROUP),
     ('settings', 'Settings', SETTINGS),
     ('lock', 'Lock', LOCK),
+    ('volumes', 'Volumes', VOLUMES),
+    ('eye', 'Eye', EYE),
+    ('eye_off', 'EyeOff', slash(EYE)),
+    ('leave', 'Leave', LEAVE),
+    ('group_hud', 'GroupHud', HUD),
+    ('group_hud_off', 'GroupHudOff', slash(HUD)),
+    ('check', 'Check', CHECK),
+    ('search', 'Search', SEARCH),
 ]
 
 
@@ -299,7 +422,7 @@ def rust() -> str:
 
 def main(argv):
     out = ROOT / 'assets' / 'voicechat' / 'textures' / 'gui' / 'icons'
-    rust_file = ROOT / 'mixins' / 'voicechat' / 'engine' / 'src' / 'icons.rs'
+    rust_file = ROOT / 'mixins' / 'simple_chat_rust' / 'engine' / 'src' / 'icons.rs'
     args = list(argv)
     if '--out' in args:
         out = Path(args[args.index('--out') + 1])

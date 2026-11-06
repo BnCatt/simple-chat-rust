@@ -1,6 +1,6 @@
 [package]
 name = "simple-chat-rust-engine"
-version = "1.0.1"
+version = "1.1.0"
 edition = "2024"
 license = "MIT"
 description = "An unofficial Simple Voice Chat protocol client for Horizon: protocol, Opus and audio"
