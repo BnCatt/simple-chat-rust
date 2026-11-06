@@ -1,0 +1,15 @@
+[package]
+name = "simple-chat-rust-engine"
+version = "1.0.0"
+edition = "2024"
+license = "MIT"
+description = "An unofficial Simple Voice Chat protocol client for Horizon: protocol, Opus and audio"
+publish = false
+
+# Only crates in Horizon's Cargo.lock, by version requirement.
+[dependencies]
+cpal = "0.16"
+libloading = "0.8"
+log = "0.4"
+ring = "0.17"
+png = "0.18"
