@@ -95,13 +95,13 @@ Uses the Horizon launcher's own Rust and Horizon source (nothing else to install
 L=~/.local/share/horizon-launcher
 export PATH=$L/rust/1.99.1-x86_64-unknown-linux-gnu/bin:$PATH CARGO_HOME=$L/cargo
 (cd mixins/simple_chat_rust/engine && cargo test --offline && rm -f Cargo.lock)   # the engine's tests
-python3 tools/package.py --install        # target/simple_chat_rust-1.1.0.hnmod (+ .hmod), the .hnmod copied into the launcher's native mods
+python3 tools/package.py --install        # target/simple_chat_rust-1.1.1.hnmod (+ .hmod), the .hnmod copied into the launcher's native mods
 python3 -m unittest tools/test_make_icons.py
 ```
 
-`package.py` makes two files. `simple_chat_rust-1.1.0.hnmod` is the native mod alone, the file the launcher reads
+`package.py` makes two files. `simple_chat_rust-1.1.1.hnmod` is the native mod alone, the file the launcher reads
 from `horizon-native-mods/` today; it draws the icons from pixels compiled into the mod
-(`engine/src/icons.rs`). `simple_chat_rust-1.1.0.hmod` is the same mod with `horizon-mod.toml` and `assets/`
+(`engine/src/icons.rs`). `simple_chat_rust-1.1.1.hmod` is the same mod with `horizon-mod.toml` and `assets/`
 (the icons as GUI textures, `voicechat:gui/icons/<name>`), the combined form for launchers that load it;
 the mod then draws those textures, which a resource pack can replace. The icons come from
 `tools/make_icons.py` (16×16 pixel grids, the mod's own drawings), which writes both the PNGs and
@@ -172,7 +172,13 @@ the microphone, and the log (`logs/latest.log`, lines `Voice Chat: …`) counts 
   projection shrinks it), and the hook adapters type-check against stand-ins with Horizon's signatures
   (not a full game build). The 1.2.0 screens were tried in the real game by a player; 1.1.0's are not
   yet.
-- Not tested yet: 1.1.0 in the real game, 2.7 servers live (no 2.7 plugin build is published), a real microphone and speakers
+- 1.1.1: the icons by name tags and the group labels follow the players smoothly. They are placed
+  each frame from the players' positions between the last two ticks and with this frame's camera
+  matrices (view bobbing included), as the game draws the name tags, instead of from the positions of
+  the last tick, which made them jump 20 times a second. A unit test checks that the matrices project
+  as the angles do and that bobbing moves the icon; the hook adapters and `world.rs` type-check against
+  stand-ins with `66f3981`'s types.
+- Not tested yet: 1.1.0 and 1.1.1 in the real game, 2.7 servers live (no 2.7 plugin build is published), a real microphone and speakers
   in the game, and talking with the Java mod itself.
 
 ## License
