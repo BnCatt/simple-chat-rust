@@ -34,7 +34,7 @@ use std::time::{Duration, Instant};
 
 pub const ID: &str = "simple_chat_rust";
 pub const NAME: &str = "Simple Chat Rust";
-pub const VERSION: &str = "1.1.0";
+pub const VERSION: &str = "1.1.1";
 pub const DESCRIPTION: &str = "Talk with players who use the Simple Voice Chat mod, on servers that have it (unofficial). \
 V opens its screens: settings, groups and each player's volume; H hides the icons. Push to talk (Caps Lock) or voice activation, with noise suppression when rnnoise.dll is beside libopus.";
 
@@ -1144,13 +1144,13 @@ pub fn hud(size: [f32; 2], measure: &dyn Fn(&str) -> f32) -> Hud {
 }
 
 /// The group names to draw above the players the camera sees, on a `size`
-/// screen.
-pub fn group_labels(camera: &labels::Camera, size: [f32; 2]) -> Vec<labels::Label> {
+/// screen. `players` are the other players' eyes as this frame draws them
+/// (between the last two ticks), so the labels move with the players.
+pub fn group_labels(camera: &labels::Camera, size: [f32; 2], players: &[(u128, [f64; 3])]) -> Vec<labels::Label> {
     let v = voice();
     let Some(session) = v.session.as_ref().filter(|s| v.settings.group_labels && s.secret.is_some()) else {
         return Vec::new();
     };
-    let players = v.shared.players.lock().unwrap();
     let shown: Vec<([f64; 3], String, bool)> = players
         .iter()
         .filter_map(|(id, eye)| {
@@ -1172,19 +1172,24 @@ fn shown_group(session: &Session, id: u128) -> Option<(String, bool)> {
 /// The icons right of the other players' name tags, as Simple Voice Chat
 /// draws them (`RenderEvents`): whispering, talking, disconnected, in
 /// another group, voice chat off, muted, in that order; nothing for a
-/// player without voice chat state. `measure` is the name's width.
-pub fn talk_icons(camera: &labels::Camera, size: [f32; 2], measure: &dyn Fn(&str) -> f32) -> Vec<ui::Draw> {
+/// player without voice chat state. `players` are their eyes as this frame
+/// draws them (as for [`group_labels`]); `measure` is the name's width.
+pub fn talk_icons(
+    camera: &labels::Camera,
+    size: [f32; 2],
+    players: &[(u128, [f64; 3])],
+    measure: &dyn Fn(&str) -> f32,
+) -> Vec<ui::Draw> {
     let v = voice();
     let Some(session) = v.session.as_ref().filter(|s| !v.settings.hide_icons && s.secret.is_some()) else {
         return Vec::new();
     };
     let now = Instant::now();
     let own = session.secret.as_ref().map(|s| s.player);
-    let players = v.shared.players.lock().unwrap();
     let talking = v.shared.talking.lock().unwrap();
     let shown: Vec<labels::NameIcon> = players
         .iter()
-        .filter(|(id, _)| Some(**id) != own)
+        .filter(|(id, _)| Some(*id) != own)
         .filter_map(|(id, eye)| {
             let state = session.states.get(id)?;
             let heard = talking.get(id).filter(|(at, _)| now - *at < TALKING);
@@ -1447,7 +1452,9 @@ mod tests {
         let none = |_: &str| None;
         tick(None, &none);
         let mut w = world("groups.example.net");
-        w.players = vec![(0xA, [0.0, 65.62, 10.0]), (0xB, [3.0, 65.62, 12.0])];
+        // The frame's eyes; the tick's are for the audio.
+        let eyes = vec![(0xAu128, [0.0, 65.62, 10.0]), (0xB, [3.0, 65.62, 12.0])];
+        w.players = eyes.clone();
         tick(Some(w), &none);
         // As a 2.6 server sends them: a secret, the groups, then the states.
         let mut secret = Writer::new();
@@ -1473,8 +1480,8 @@ mod tests {
         joined.bool(true).uuid(0x61).bool(false);
         payload("voicechat:joined_group", &joined.finish());
 
-        let camera = labels::Camera { pos: [0.0, 65.62, 0.0], yaw: 0.0, pitch: 0.0, fov: 70.0 };
-        let shown = group_labels(&camera, [400.0, 200.0]);
+        let camera = labels::Camera { pos: [0.0, 65.62, 0.0], yaw: 0.0, pitch: 0.0, fov: 70.0, matrices: None };
+        let shown = group_labels(&camera, [400.0, 200.0], &eyes);
         let texts: Vec<_> = shown.iter().map(|l| (l.text.as_str(), l.rgb)).collect();
         assert_eq!(texts, vec![("[Miners]", 0xFFFF55), ("[Builders]", 0x55FF55)]);
         // By the name tags: a group icon for Bea (another group), nothing for
@@ -1483,9 +1490,9 @@ mod tests {
         let icons = |d: Vec<ui::Draw>| -> Vec<String> {
             d.into_iter().filter_map(|d| if let ui::Draw::Sprite { name, .. } = d { Some(name) } else { None }).collect()
         };
-        assert_eq!(icons(talk_icons(&camera, [400.0, 200.0], &tw)), vec![skin::Icon::Group.sprite()]);
+        assert_eq!(icons(talk_icons(&camera, [400.0, 200.0], &eyes, &tw)), vec![skin::Icon::Group.sprite()]);
         voice().shared.talking.lock().unwrap().insert(0xB, (Instant::now(), false));
-        assert_eq!(icons(talk_icons(&camera, [400.0, 200.0], &tw)), vec![skin::Icon::Speaker.sprite()]);
+        assert_eq!(icons(talk_icons(&camera, [400.0, 200.0], &eyes, &tw)), vec![skin::Icon::Speaker.sprite()]);
         voice().shared.talking.lock().unwrap().clear();
         let list = command("vc groups").unwrap();
         assert_eq!(list, vec!["Builders (yours): Alex, Me", "Miners: Bea"]);

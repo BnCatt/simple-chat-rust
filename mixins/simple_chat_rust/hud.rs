@@ -2,8 +2,8 @@
 // Voice Chat puts it (microphone, muted, off, disconnected, whispering) with
 // what doesn't work above it, the group's members in the top left corner,
 // each player's group above their head and the voice chat icon right of
-// their name tag (talking, whispering, off...), seen from the camera the
-// world was drawn from.
+// their name tag (talking, whispering, off...), seen from this frame's
+// camera with the players where this frame draws them.
 fn simple_chat_rust_hud(
     game: &mut crate::game::Game<'_>,
     batch: &mut horizon_client::hud::HudBatch,
@@ -17,15 +17,28 @@ fn simple_chat_rust_hud(
     let game = &*game;
     let size = [batch.width, batch.height];
     let mut draws = Vec::new();
-    if let Some((pos, yaw, pitch, fov)) = crate::game::remote::simple_chat_rust_world::camera(game) {
-        let camera = vc::labels::Camera { pos, yaw, pitch, fov };
-        for label in vc::group_labels(&camera, size) {
+    // This frame's camera, matrices and all (the view bobbing is in them), so
+    // the icons move with the name tags; the last frame's if it is missing.
+    let world = crate::game::remote::simple_chat_rust_world::camera;
+    let camera = match game.native_camera() {
+        Some(c) => Some(vc::labels::Camera {
+            pos: c.position,
+            yaw: c.yaw,
+            pitch: c.pitch,
+            fov: c.fov_degrees,
+            matrices: Some(vc::labels::Matrices { view: c.view, projection: c.projection }),
+        }),
+        None => world(game).map(|(pos, yaw, pitch, fov)| vc::labels::Camera { pos, yaw, pitch, fov, matrices: None }),
+    };
+    if let Some(camera) = camera {
+        let players = crate::game::remote::simple_chat_rust_world::frame_players(game);
+        for label in vc::group_labels(&camera, size, &players) {
             let w = game.native_text_width(&label.text) + 4.0;
             let [x, y] = [label.at[0] - w / 2.0, label.at[1] - 6.0];
             draws.push(vc::ui::Draw::Fill([x, y, w, 12.0], 0x6000_0000));
             draws.push(vc::ui::Draw::Text(label.text, [x + 2.0, y + 2.0], label.rgb, true));
         }
-        draws.extend(vc::talk_icons(&camera, size, &|t: &str| game.native_text_width(t)));
+        draws.extend(vc::talk_icons(&camera, size, &players, &|t: &str| game.native_text_width(t)));
     }
     let measure = |t: &str| game.native_text_width(t);
     let hud = vc::hud(size, &measure);

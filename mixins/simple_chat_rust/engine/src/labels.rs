@@ -1,14 +1,29 @@
-//! Labels above players in the world: which voice chat group each is in, as
-//! the camera the last frame drew from sees them. The projection is the
-//! waypoints mod's.
+//! Labels and icons by players in the world: which voice chat group each is
+//! in and the icon right of the name tag, as this frame's camera sees them.
 
-/// The camera: its position, yaw and pitch in degrees, vertical field of view.
+/// The camera: its position, yaw and pitch in degrees, vertical field of view,
+/// and the matrices the world was drawn with when the game gives them.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Camera {
     pub pos: [f64; 3],
     pub yaw: f32,
     pub pitch: f32,
     pub fov: f32,
+    pub matrices: Option<Matrices>,
+}
+
+/// The frame's camera-relative view matrix (with the view bobbing in it) and
+/// its projection, column-major. Projecting with them puts a point exactly
+/// where the world drew it, so an icon walks and bobs with the name tag.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Matrices {
+    pub view: [f32; 16],
+    pub projection: [f32; 16],
+}
+
+/// `m * v` for a column-major 4×4 matrix.
+fn mul(m: &[f32; 16], v: [f64; 4]) -> [f64; 4] {
+    std::array::from_fn(|r| (0..4).map(|c| f64::from(m[c * 4 + r]) * v[c]).sum())
 }
 
 fn sub(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
@@ -41,8 +56,17 @@ fn basis(yaw: f32, pitch: f32) -> ([f64; 3], [f64; 3], [f64; 3]) {
 /// `point` on a `size` screen, as the world's perspective projection draws
 /// it; None behind the camera.
 pub fn project(camera: &Camera, point: [f64; 3], size: [f32; 2]) -> Option<[f32; 2]> {
-    let (f, r, u) = basis(camera.yaw, camera.pitch);
     let d = sub(point, camera.pos);
+    if let Some(m) = &camera.matrices {
+        let c = mul(&m.projection, mul(&m.view, [d[0], d[1], d[2], 1.0]));
+        // w is the depth in front of the camera.
+        if c[3] < 0.05 || size[1] <= 0.0 {
+            return None;
+        }
+        let (nx, ny) = (c[0] / c[3], c[1] / c[3]);
+        return Some([((nx + 1.0) / 2.0 * f64::from(size[0])) as f32, ((1.0 - ny) / 2.0 * f64::from(size[1])) as f32]);
+    }
+    let (f, r, u) = basis(camera.yaw, camera.pitch);
     let z = dot(d, f);
     if z < 0.05 || size[1] <= 0.0 {
         return None;
@@ -153,7 +177,7 @@ mod tests {
 
     #[test]
     fn the_icon_sits_right_of_the_name_tag() {
-        let camera = Camera { pos: [0.0, 65.62, 0.0], yaw: 0.0, pitch: 0.0, fov: 70.0 };
+        let camera = Camera { pos: [0.0, 65.62, 0.0], yaw: 0.0, pitch: 0.0, fov: 70.0, matrices: None };
         let size = [400.0, 200.0];
         let at = |z: f64, w: f32, icon: Icon| NameIcon { eye: [0.0, 65.62, z], name_width: w, icon };
         let (name, near) = one(&name_icons(&camera, size, &[at(5.0, 30.0, Icon::Speaker)]));
@@ -177,9 +201,60 @@ mod tests {
         assert!(matches!(&two[0], Draw::Sprite { name, .. } if name == Icon::Whisper.sprite()));
     }
 
+    /// The matrices Horizon builds (`camera::view_matrix`: rows right, up,
+    /// back; `perspective_rh` with reversed Z) for a yaw, pitch and fov.
+    fn matrices(yaw: f32, pitch: f32, fov: f32, aspect: f32) -> Matrices {
+        let (f, r, u) = basis(yaw, pitch);
+        let rows = [r, u, [-f[0], -f[1], -f[2]]];
+        let mut view = [0.0f32; 16];
+        for (i, row) in rows.iter().enumerate() {
+            for (c, v) in row.iter().enumerate() {
+                view[c * 4 + i] = *v as f32;
+            }
+        }
+        view[15] = 1.0;
+        let t = 1.0 / (fov.to_radians() / 2.0).tan();
+        let (near, far) = (1000.0f32, 0.05f32);
+        let mut projection = [0.0f32; 16];
+        projection[0] = t / aspect;
+        projection[5] = t;
+        projection[10] = far / (near - far);
+        projection[11] = -1.0;
+        projection[14] = near * far / (near - far);
+        Matrices { view, projection }
+    }
+
+    #[test]
+    fn the_frame_matrices_project_as_the_angles_do() {
+        let size = [400.0, 200.0];
+        for (yaw, pitch) in [(0.0, 0.0), (37.0, -20.0), (-120.0, 45.0), (200.0, 80.0)] {
+            let plain = Camera { pos: [3.0, 70.0, -4.0], yaw, pitch, fov: 70.0, matrices: None };
+            let framed = Camera { matrices: Some(matrices(yaw, pitch, 70.0, 2.0)), ..plain };
+            for point in [[5.0, 71.0, 6.0], [-8.0, 69.0, 2.0], [3.0, 75.0, -4.5], [10.0, 70.0, -12.0]] {
+                let (a, b) = (project(&plain, point, size), project(&framed, point, size));
+                match (a, b) {
+                    (Some(a), Some(b)) => {
+                        assert!((a[0] - b[0]).abs() < 0.05 && (a[1] - b[1]).abs() < 0.05, "{yaw} {pitch} {point:?}: {a:?} {b:?}")
+                    }
+                    (None, None) => {}
+                    other => panic!("{yaw} {pitch} {point:?}: {other:?}"),
+                }
+            }
+        }
+        // The view bobbing in the view matrix moves the icon with the tag.
+        let mut bobbed = matrices(0.0, 0.0, 70.0, 2.0);
+        bobbed.view[13] = 0.05;
+        let still = Camera { pos: [0.0, 65.62, 0.0], yaw: 0.0, pitch: 0.0, fov: 70.0, matrices: Some(matrices(0.0, 0.0, 70.0, 2.0)) };
+        let bob = Camera { matrices: Some(bobbed), ..still };
+        let tag = NameIcon { eye: [0.0, 65.62, 5.0], name_width: 30.0, icon: Icon::Speaker };
+        let (_, a) = one(&name_icons(&still, size, std::slice::from_ref(&tag)));
+        let (_, b) = one(&name_icons(&bob, size, std::slice::from_ref(&tag)));
+        assert!(b[1] < a[1] - 1.0 && (a[0] - b[0]).abs() < 0.01, "{a:?} {b:?}");
+    }
+
     #[test]
     fn a_player_ahead_gets_a_label_above_the_middle() {
-        let camera = Camera { pos: [0.0, 65.62, 0.0], yaw: 0.0, pitch: 0.0, fov: 70.0 };
+        let camera = Camera { pos: [0.0, 65.62, 0.0], yaw: 0.0, pitch: 0.0, fov: 70.0, matrices: None };
         let size = [400.0, 200.0];
         let players = vec![
             ([0.0, 65.62, 10.0], "Builders".to_owned(), false),
