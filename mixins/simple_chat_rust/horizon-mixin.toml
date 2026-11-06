@@ -8,7 +8,7 @@ priority = 100
 # launcher builds it on any Horizon that has them. Its one reach into the
 # game's own state is `world.rs` (the joined address, other players, camera).
 [compatibility]
-horizon_revision = "f319701e8c9ab657ff562250b3ba07b2d654e3bc"
+horizon_revision = "66f3981f522b24c250b21523a70080965b940424"
 
 # Simple Voice Chat's protocol, Opus, the sound card and the voice threads.
 [[crate]]
