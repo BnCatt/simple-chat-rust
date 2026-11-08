@@ -12,7 +12,7 @@ original author Nirokx); Simple Voice Chat-style screens, HUD icons and noise su
 setting and custom icons by [BnCatt](https://github.com/BnCatt). MIT, see [LICENSE](LICENSE).
 
 A native Horizon mod (Minecraft 26.3, native hook API 409 and later; tested on Horizon Nightly
-2026-11-05, `66f3981`) that is a client for
+2026-11-07, `2ebf00a`) that is a client for
 the [Simple Voice Chat](https://github.com/henkelmax/simple-voice-chat) protocol. It uses the same
 protocol as the Java mod, so on any server with the voice chat mod or plugin you can talk with players
 who play on the regular Java launcher with Simple Voice Chat.
@@ -95,13 +95,13 @@ Uses the Horizon launcher's own Rust and Horizon source (nothing else to install
 L=~/.local/share/horizon-launcher
 export PATH=$L/rust/1.99.1-x86_64-unknown-linux-gnu/bin:$PATH CARGO_HOME=$L/cargo
 (cd mixins/simple_chat_rust/engine && cargo test --offline && rm -f Cargo.lock)   # the engine's tests
-python3 tools/package.py --install        # target/simple_chat_rust-1.1.1.hnmod (+ .hmod), the .hnmod copied into the launcher's native mods
+python3 tools/package.py --install        # target/simple_chat_rust-1.1.2.hnmod (+ .hmod), the .hnmod copied into the launcher's native mods
 python3 -m unittest tools/test_make_icons.py
 ```
 
-`package.py` makes two files. `simple_chat_rust-1.1.1.hnmod` is the native mod alone, the file the launcher reads
+`package.py` makes two files. `simple_chat_rust-1.1.2.hnmod` is the native mod alone, the file the launcher reads
 from `horizon-native-mods/` today; it draws the icons from pixels compiled into the mod
-(`engine/src/icons.rs`). `simple_chat_rust-1.1.1.hmod` is the same mod with `horizon-mod.toml` and `assets/`
+(`engine/src/icons.rs`). `simple_chat_rust-1.1.2.hmod` is the same mod with `horizon-mod.toml` and `assets/`
 (the icons as GUI textures, `voicechat:gui/icons/<name>`), the combined form for launchers that load it;
 the mod then draws those textures, which a resource pack can replace. The icons come from
 `tools/make_icons.py` (16×16 pixel grids, the mod's own drawings), which writes both the PNGs and
@@ -178,8 +178,16 @@ the microphone, and the log (`logs/latest.log`, lines `Voice Chat: …`) counts 
   the last tick, which made them jump 20 times a second. A unit test checks that the matrices project
   as the angles do and that bobbing moves the icon; the hook adapters and `world.rs` type-check against
   stand-ins with `66f3981`'s types.
-- Not tested yet: 1.1.0 and 1.1.1 in the real game, 2.7 servers live (no 2.7 plugin build is published), a real microphone and speakers
-  in the game, and talking with the Java mod itself.
+- 1.1.2: the icon by a name tag sits right of the whole shown name (a team prefix such as a rank
+  widens it, as `getDisplayName` does in the Java mod), goes up a line when a below-name score shows,
+  is level with the text, and stays beside the tag however the camera turns: it is laid out on the
+  tag's own plane, then put on whole screen pixels counted from the pixels the name's text covers,
+  so it moves with the text pixel for pixel instead of wiggling a pixel off it while the camera
+  turns. Measured on screenshots of two clients (1920×1080, GUI scale 3) while one turns in steps of
+  half a degree; unit tests check the layout, the plane and the pixel lock. Built and played on
+  Nightly 2026-11-07 (`2ebf00a`) with 9 other native mods.
+- Not tested yet: 2.7 servers live (no 2.7 plugin build is published) and talking with the Java mod
+  itself.
 
 ## License
 

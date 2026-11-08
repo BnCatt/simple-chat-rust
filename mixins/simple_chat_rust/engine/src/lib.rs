@@ -34,7 +34,7 @@ use std::time::{Duration, Instant};
 
 pub const ID: &str = "simple_chat_rust";
 pub const NAME: &str = "Simple Chat Rust";
-pub const VERSION: &str = "1.1.1";
+pub const VERSION: &str = "1.1.2";
 pub const DESCRIPTION: &str = "Talk with players who use the Simple Voice Chat mod, on servers that have it (unofficial). \
 V opens its screens: settings, groups and each player's volume; H hides the icons. Push to talk (Caps Lock) or voice activation, with noise suppression when rnnoise.dll is beside libopus.";
 
@@ -1173,12 +1173,16 @@ fn shown_group(session: &Session, id: u128) -> Option<(String, bool)> {
 /// draws them (`RenderEvents`): whispering, talking, disconnected, in
 /// another group, voice chat off, muted, in that order; nothing for a
 /// player without voice chat state. `players` are their eyes as this frame
-/// draws them (as for [`group_labels`]); `measure` is the name's width.
+/// draws them (as for [`group_labels`]); `name_tag` is, for a player's name,
+/// the shown name's width (team prefix and suffix included) and whether a
+/// below-name score goes under it. `size` is the screen in GUI pixels and
+/// `scale` the physical pixels per GUI pixel.
 pub fn talk_icons(
     camera: &labels::Camera,
     size: [f32; 2],
+    scale: f32,
     players: &[(u128, [f64; 3])],
-    measure: &dyn Fn(&str) -> f32,
+    name_tag: &dyn Fn(&str) -> (f32, bool),
 ) -> Vec<ui::Draw> {
     let v = voice();
     let Some(session) = v.session.as_ref().filter(|s| !v.settings.hide_icons && s.secret.is_some()) else {
@@ -1202,10 +1206,11 @@ pub fn talk_icons(
                 None if state.muted => skin::Icon::MicOff,
                 None => return None,
             };
-            Some(labels::NameIcon { eye: *eye, name_width: measure(&state.name), icon })
+            let (name_width, below_name) = name_tag(&state.name);
+            Some(labels::NameIcon { eye: *eye, name_width, below_name, icon })
         })
         .collect();
-    labels::name_icons(camera, size, &shown)
+    labels::name_icons(camera, size, scale, &shown)
 }
 
 /// `key.keyboard.caps.lock` → `Caps Lock`.
@@ -1486,13 +1491,13 @@ mod tests {
         assert_eq!(texts, vec![("[Miners]", 0xFFFF55), ("[Builders]", 0x55FF55)]);
         // By the name tags: a group icon for Bea (another group), nothing for
         // Alex (ours, quiet); a speaker while Bea talks.
-        let tw = |t: &str| t.len() as f32 * 6.0;
+        let tw = |t: &str| (t.len() as f32 * 6.0, false);
         let icons = |d: Vec<ui::Draw>| -> Vec<String> {
             d.into_iter().filter_map(|d| if let ui::Draw::Sprite { name, .. } = d { Some(name) } else { None }).collect()
         };
-        assert_eq!(icons(talk_icons(&camera, [400.0, 200.0], &eyes, &tw)), vec![skin::Icon::Group.sprite()]);
+        assert_eq!(icons(talk_icons(&camera, [400.0, 200.0], 2.0, &eyes, &tw)), vec![skin::Icon::Group.sprite()]);
         voice().shared.talking.lock().unwrap().insert(0xB, (Instant::now(), false));
-        assert_eq!(icons(talk_icons(&camera, [400.0, 200.0], &eyes, &tw)), vec![skin::Icon::Speaker.sprite()]);
+        assert_eq!(icons(talk_icons(&camera, [400.0, 200.0], 2.0, &eyes, &tw)), vec![skin::Icon::Speaker.sprite()]);
         voice().shared.talking.lock().unwrap().clear();
         let list = command("vc groups").unwrap();
         assert_eq!(list, vec!["Builders (yours): Alex, Me", "Miners: Bea"]);

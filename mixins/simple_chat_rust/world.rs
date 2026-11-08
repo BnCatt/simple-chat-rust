@@ -67,6 +67,26 @@ pub(crate) fn frame_players(game: &crate::game::Game<'_>) -> Vec<(u128, [f64; 3]
         .collect()
 }
 
+/// A player's name tag as the game draws it (`game/names.rs`): the shown
+/// name's width in text pixels (`getDisplayName`: the team's prefix, the name
+/// and the team's suffix, so a rank such as `[Admin] ` widens it), and whether
+/// a below-name score goes under it, which puts the name a line up near by.
+pub(crate) fn name_tag(game: &crate::game::Game<'_>, name: &str) -> (f32, bool) {
+    use horizon_client::{scoreboard as sb, text::Text};
+    let board = &game.score.board;
+    let member = Text::literal(name);
+    let shown = match board.players_team(name) {
+        Some(team) => team.formatted_name(member),
+        None => member,
+    }
+    .resolve_legacy();
+    let width = game.gui.atlas.font.width_text(&shown);
+    let score = board
+        .display_objective(sb::SLOT_BELOW_NAME)
+        .is_some_and(|o| board.score(name, &o.name).is_some());
+    (width, score)
+}
+
 /// The camera the world was last drawn from: position, yaw, pitch and field of
 /// view. Set after the HUD is built, so one frame old in the HUD hook; only a
 /// stand-in for when `native_camera` (this frame's) is missing.

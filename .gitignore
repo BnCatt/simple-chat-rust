@@ -1,2 +1,3 @@
 /target
+/mixins/simple_chat_rust/engine/target
 Cargo.lock

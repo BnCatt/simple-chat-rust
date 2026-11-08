@@ -16,6 +16,13 @@ fn simple_chat_rust_hud(
     }
     let game = &*game;
     let size = [batch.width, batch.height];
+    // The world's screen in GUI pixels: the window over the GUI scale. The
+    // batch rounds its size up to whole GUI pixels, which would stretch the
+    // projection by up to a pixel where the window isn't a multiple.
+    let scale = batch.scale.max(1.0);
+    let world_size = game
+        .native_physical_window_size()
+        .map_or(size, |[w, h]| [w as f32 / scale, h as f32 / scale]);
     let mut draws = Vec::new();
     // This frame's camera, matrices and all (the view bobbing is in them), so
     // the icons move with the name tags; the last frame's if it is missing.
@@ -32,13 +39,16 @@ fn simple_chat_rust_hud(
     };
     if let Some(camera) = camera {
         let players = crate::game::remote::simple_chat_rust_world::frame_players(game);
-        for label in vc::group_labels(&camera, size, &players) {
+        for label in vc::group_labels(&camera, world_size, &players) {
             let w = game.native_text_width(&label.text) + 4.0;
             let [x, y] = [label.at[0] - w / 2.0, label.at[1] - 6.0];
             draws.push(vc::ui::Draw::Fill([x, y, w, 12.0], 0x6000_0000));
             draws.push(vc::ui::Draw::Text(label.text, [x + 2.0, y + 2.0], label.rgb, true));
         }
-        draws.extend(vc::talk_icons(&camera, size, &players, &|t: &str| game.native_text_width(t)));
+        // The name tag's shown width (a rank in the team prefix widens it), so
+        // the icon stays right of the whole tag as Simple Voice Chat puts it.
+        let name_tag = |name: &str| crate::game::remote::simple_chat_rust_world::name_tag(game, name);
+        draws.extend(vc::talk_icons(&camera, world_size, scale, &players, &name_tag));
     }
     let measure = |t: &str| game.native_text_width(t);
     let hud = vc::hud(size, &measure);
