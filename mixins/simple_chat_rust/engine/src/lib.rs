@@ -34,7 +34,7 @@ use std::time::{Duration, Instant};
 
 pub const ID: &str = "simple_chat_rust";
 pub const NAME: &str = "Simple Chat Rust";
-pub const VERSION: &str = "1.1.2";
+pub const VERSION: &str = "1.1.3";
 pub const DESCRIPTION: &str = "Talk with players who use the Simple Voice Chat mod, on servers that have it (unofficial). \
 V opens its screens: settings, groups and each player's volume; H hides the icons. Push to talk (Caps Lock) or voice activation, with noise suppression when rnnoise.dll is beside libopus.";
 

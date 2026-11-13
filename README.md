@@ -12,7 +12,7 @@ original author Nirokx); Simple Voice Chat-style screens, HUD icons and noise su
 setting and custom icons by [BnCatt](https://github.com/BnCatt). MIT, see [LICENSE](LICENSE).
 
 A native Horizon mod (Minecraft 26.3, native hook API 409 and later; tested on Horizon Nightly
-2026-11-07, `2ebf00a`) that is a client for
+2026-11-13, `9f42064`) that is a client for
 the [Simple Voice Chat](https://github.com/henkelmax/simple-voice-chat) protocol. It uses the same
 protocol as the Java mod, so on any server with the voice chat mod or plugin you can talk with players
 who play on the regular Java launcher with Simple Voice Chat.
